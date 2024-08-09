@@ -18,10 +18,12 @@ import { JwtAuthGuard } from 'src/authentificaion/auth.guard';
 import { CreateProjectDto } from './dto/create-project';
 import { UpdateProjectDto } from './dto/update-project.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
-
+import { ApiOperation, ApiTags } from '@nestjs/swagger';
+@ApiTags("Project and task module")
 @Controller('projects')
 export class ProjectsController {
   constructor(private readonly projectService: ProjectsService,private readonly prisma:PrismaService) {}
+  @ApiOperation({summary:"create a project by a admin user add the users associate and they taks with the system association of prisma this endpoint required a token  "})
   @Post()
   @UseGuards(JwtAuthGuard)
   async createProject(
@@ -36,18 +38,19 @@ export class ProjectsController {
       return res.status(200).json({ msg });
     }
   }
+  @ApiOperation({summary:"get all project with the users and they taks"})
   @Get()
   async getAll() {
     return this.projectService.findAll();
   }
-
+  @ApiOperation({summary:"get all project create by an user  connect this endpoint required a token "})
   @Get('/user')
   @UseGuards(JwtAuthGuard)
   async findAllByUser(@Req() req) {
     const userId = req.user.id;
     return this.projectService.findAllByUser(userId);
   }
-
+  @ApiOperation({summary:"update a project by id of a creator this endpoint required a token"})
   @Put(':id')
   @UseGuards(JwtAuthGuard)
   async update(
@@ -62,7 +65,7 @@ export class ProjectsController {
       userId,
     );
   }
-
+  @ApiOperation({summary:"delete a project by a creator this endpoint required a token "})
   @Delete(':id')
   @UseGuards(JwtAuthGuard)
   async delete(projectId: number, userId: number) {

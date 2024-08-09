@@ -13,15 +13,18 @@ import {
 import { usersService } from './users.service';
 import { Request, Response } from 'express';
 import { Users } from './users.model';
+import { ApiOperation, ApiTags } from '@nestjs/swagger';
+@ApiTags("User module")
 @Controller('users')
 export class usersController {
   constructor(private readonly usersService: usersService) {}
+  @ApiOperation({summary:"get all users"})
   @Get()
   async findAll(
     @Req() request: Request,
     @Res() response: Response,
   ): Promise<any> {
-    try {
+    try { 
       const result = await this.usersService.findAll();
 
       if (Array.isArray(result)) {
@@ -40,7 +43,7 @@ export class usersController {
         .json({ message: 'Une erreur est survenue', error });
     }
   }
-
+  @ApiOperation({summary:"get users by id"})
   @Get(':id')
   async findOne(
     @Param('id') id: string,
@@ -57,7 +60,7 @@ export class usersController {
         .json({ message: 'Une erreur est survenue', error });
     }
   }
-
+  @ApiOperation({summary:"delete a user by id"})
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.usersService.remove(+id);
