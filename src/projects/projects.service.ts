@@ -8,10 +8,12 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateProjectDto } from './dto/create-project';
 import { UpdateProjectDto } from './dto/update-project.dto';
 
+// Service de gestion des projets
 @Injectable()
 export class ProjectsService {
   constructor(private readonly prisma: PrismaService) {}
 
+  // Création d'un nouveau projet
   async create(createProjectDto: CreateProjectDto, userId: number) {
     const { name, description, userIds, tasks } = createProjectDto;
 
@@ -25,18 +27,21 @@ export class ProjectsService {
 
     if (existingProject) {
       throw new ConflictException(
-        'A project with the same name already exists for this creator.',
+        'Un projet avec le même nom existe déjà pour ce créateur.',
       );
     }
+
+    // Vérification si l'utilisateur est un administrateur
     const isAdmin = await this.prisma.user.findUnique({
       where: {
         id: userId,
       },
     });
+
     if (isAdmin) {
       if (isAdmin.role == 'admin') {
         try {
-          // Vérification de chaque assignedToId avant la création des tâches
+          // Vérification de l'existence de chaque utilisateur assigné aux tâches
           const validTasks = await Promise.all(
             tasks?.map(async (task) => {
               const userExists = await this.prisma.user.findUnique({
@@ -46,14 +51,14 @@ export class ProjectsService {
               });
               if (!userExists) {
                 throw new ConflictException(
-                  `User with ID ${task.assignedToId} does not exist.`,
+                  `L'utilisateur avec l'ID ${task.assignedToId} n'existe pas.`,
                 );
               }
               return task;
             }),
           );
 
-          // Vérification de chaque userId avant la connexion des utilisateurs au projet
+          // Vérification de l'existence de chaque utilisateur à connecter au projet
           const validUserIds = await Promise.all(
             userIds?.map(async (id) => {
               const userExists = await this.prisma.user.findUnique({
@@ -63,7 +68,7 @@ export class ProjectsService {
               });
               if (!userExists) {
                 throw new ConflictException(
-                  `User with ID ${id} does not exist.`,
+                  `L'utilisateur avec l'ID ${id} n'existe pas.`,
                 );
               }
               return id;
@@ -96,20 +101,20 @@ export class ProjectsService {
 
           return project;
         } catch (error) {
-          // Capturer et gérer l'erreur ici pour éviter le crash du serveur
+          // Gestion des erreurs lors de la création du projet
           if (error instanceof ConflictException) {
-            throw error; // Ré-lance l'exception ConflictException pour la capturer au niveau du contrôleur
+            throw error; // Relancer l'exception ConflictException pour la capturer au niveau du contrôleur
           }
-          throw new Error(`Failed to create project: ${error.message}`);
+          throw new Error(`Échec de la création du projet : ${error.message}`);
         }
       } else {
-        throw new ForbiddenException('Access denied');
+        throw new ForbiddenException('Accès refusé');
       }
     }
   }
 
+  // Récupération de tous les projets avec leurs détails
   async findAll() {
-    // Récupérer tous les projets avec leurs détails de créateur, utilisateurs et tâches
     const projects = await this.prisma.project.findMany({
       include: {
         creator: true, // Inclure les détails du créateur
@@ -118,7 +123,7 @@ export class ProjectsService {
       },
     });
 
-    // Supprimer les mots de passe des utilisateurs
+    // Suppression des mots de passe des utilisateurs pour la sécurité
     const sanitizedProjects = projects.map((project) => ({
       ...project,
       creator: {
@@ -134,8 +139,8 @@ export class ProjectsService {
     return sanitizedProjects;
   }
 
+  // Récupération des projets associés à un utilisateur
   async findAllByUser(userId: number) {
-    // Récupérer tous les projets auxquels l'utilisateur fait partie
     const projects = await this.prisma.project.findMany({
       where: {
         OR: [
@@ -154,7 +159,7 @@ export class ProjectsService {
       },
     });
 
-    // Supprimer les mots de passe des utilisateurs
+    // Suppression des mots de passe des utilisateurs pour la sécurité
     const sanitizedProjects = projects.map((project) => ({
       ...project,
       creator: {
@@ -170,8 +175,7 @@ export class ProjectsService {
     return sanitizedProjects;
   }
 
-  // update a project by a admin user
-
+  // Mise à jour d'un projet par un utilisateur administrateur
   async update(
     projectId: number,
     updateProjectDto: UpdateProjectDto,
@@ -185,12 +189,12 @@ export class ProjectsService {
     });
 
     if (!project) {
-      throw new ConflictException('Project not found.');
+      throw new ConflictException('Projet non trouvé.');
     }
 
     if (project.creatorId !== userId) {
       throw new ForbiddenException(
-        'You are not allowed to update this project.',
+        "Vous n'êtes pas autorisé à mettre à jour ce projet.",
       );
     }
 
@@ -203,13 +207,13 @@ export class ProjectsService {
               where: { id },
             });
             if (!userExists) {
-              throw new ConflictException(`User with ID ${id} does not exist.`);
+              throw new ConflictException(`L'utilisateur avec l'ID ${id} n'existe pas.`);
             }
           }),
         );
       }
 
-      // Update project details and relations
+      // Mise à jour des détails du projet et des relations
       const updatedProject = await this.prisma.project.update({
         where: { id: projectId },
         data: {
@@ -247,10 +251,11 @@ export class ProjectsService {
 
       return updatedProject;
     } catch (error) {
-      throw new Error(`Failed to update project: ${error.message}`);
+      throw new Error(`Échec de la mise à jour du projet : ${error.message}`);
     }
   }
 
+  // Suppression d'un projet
   async delete(projectId: number, userId: number) {
     const project = await this.prisma.project.findUnique({
       where: { id: projectId },
@@ -258,12 +263,12 @@ export class ProjectsService {
     });
 
     if (!project) {
-      throw new ConflictException('Project not found.');
+      throw new ConflictException('Projet non trouvé.');
     }
 
     if (project.creatorId !== userId) {
       throw new ForbiddenException(
-        'You are not allowed to delete this project.',
+        "Vous n'êtes pas autorisé à supprimer ce projet.",
       );
     }
 
@@ -272,7 +277,7 @@ export class ProjectsService {
         where: { id: projectId },
       });
     } catch (error) {
-      throw new Error(`Failed to delete project: ${error.message}`);
+      throw new Error(`Échec de la suppression du projet : ${error.message}`);
     }
   }
 }

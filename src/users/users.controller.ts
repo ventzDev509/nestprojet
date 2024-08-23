@@ -14,11 +14,15 @@ import { usersService } from './users.service';
 import { Request, Response } from 'express';
 import { Users } from './users.model';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-@ApiTags("User module")
+
+// Décorateur pour ajouter un tag Swagger à ce contrôleur
+@ApiTags("Module utilisateur")
 @Controller('users')
 export class usersController {
   constructor(private readonly usersService: usersService) {}
-  @ApiOperation({summary:"get all users"})
+
+  // Endpoint pour récupérer tous les utilisateurs
+  @ApiOperation({summary:"Obtenir tous les utilisateurs"})
   @Get()
   async findAll(
     @Req() request: Request,
@@ -28,6 +32,7 @@ export class usersController {
       const result = await this.usersService.findAll();
 
       if (Array.isArray(result)) {
+        // Suppression du mot de passe de chaque utilisateur avant de renvoyer la réponse
         const sanitizedResult = result.map((user) => {
           const { password, ...sanitizedUser } = user;
           return sanitizedUser;
@@ -38,12 +43,15 @@ export class usersController {
         return response.status(200).json(result);
       }
     } catch (error) {
+      // En cas d'erreur, renvoyer un message d'erreur
       return response
         .status(500)
         .json({ message: 'Une erreur est survenue', error });
     }
   }
-  @ApiOperation({summary:"get users by id"})
+
+  // Endpoint pour récupérer un utilisateur par son ID
+  @ApiOperation({summary:"Obtenir un utilisateur par son ID"})
   @Get(':id')
   async findOne(
     @Param('id') id: string,
@@ -52,15 +60,19 @@ export class usersController {
   ) {
     try {
       const result = await this.usersService.findOne(+id);
+      // Suppression du mot de passe avant de renvoyer la réponse
       delete result.password;
       return response.status(200).json(result);
     } catch (error) {
+      // En cas d'erreur, renvoyer un message d'erreur
       return response
         .status(500)
         .json({ message: 'Une erreur est survenue', error });
     }
   }
-  @ApiOperation({summary:"delete a user by id"})
+
+  // Endpoint pour supprimer un utilisateur par son ID
+  @ApiOperation({summary:"Supprimer un utilisateur par son ID"})
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.usersService.remove(+id);

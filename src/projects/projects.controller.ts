@@ -1,4 +1,3 @@
-
 import {
   Body,
   ConflictException,
@@ -19,11 +18,13 @@ import { CreateProjectDto } from './dto/create-project';
 import { UpdateProjectDto } from './dto/update-project.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-@ApiTags("Project and task module")
+
+@ApiTags("Module de projet et de tâche")
 @Controller('projects')
 export class ProjectsController {
-  constructor(private readonly projectService: ProjectsService,private readonly prisma:PrismaService) {}
-  @ApiOperation({summary:"create a project by a admin user add the users associate and they taks with the system association of prisma this endpoint required a token  "})
+  constructor(private readonly projectService: ProjectsService, private readonly prisma: PrismaService) {}
+
+  @ApiOperation({summary: "Créer un projet par un utilisateur admin, ajouter les utilisateurs associés et leurs tâches avec l'association système de Prisma. Cet endpoint nécessite un token."})
   @Post()
   @UseGuards(JwtAuthGuard)
   async createProject(
@@ -34,23 +35,26 @@ export class ProjectsController {
     const userId = req.user.id;
     const result = await this.projectService.create(project, userId);
     if (result) {
-      const msg = 'project create successfully';
+      const msg = 'Projet créé avec succès';
       return res.status(200).json({ msg });
     }
   }
-  @ApiOperation({summary:"get all project with the users and they taks"})
+
+  @ApiOperation({summary: "Obtenir tous les projets avec les utilisateurs et leurs tâches"})
   @Get()
   async getAll() {
     return this.projectService.findAll();
   }
-  @ApiOperation({summary:"get all project create by an user  connect this endpoint required a token "})
+
+  @ApiOperation({summary: "Obtenir tous les projets créés par un utilisateur. Cet endpoint nécessite un token."})
   @Get('/user')
   @UseGuards(JwtAuthGuard)
   async findAllByUser(@Req() req) {
     const userId = req.user.id;
     return this.projectService.findAllByUser(userId);
   }
-  @ApiOperation({summary:"update a project by id of a creator this endpoint required a token"})
+
+  @ApiOperation({summary: "Mettre à jour un projet par son id pour le créateur. Cet endpoint nécessite un token."})
   @Put(':id')
   @UseGuards(JwtAuthGuard)
   async update(
@@ -65,39 +69,43 @@ export class ProjectsController {
       userId,
     );
   }
-  @ApiOperation({summary:"delete a project by a creator this endpoint required a token "})
+
+  @ApiOperation({summary: "Supprimer un projet par son créateur. Cet endpoint nécessite un token."})
   @Delete(':id')
   @UseGuards(JwtAuthGuard)
-  async delete(projectId: number, userId: number) {
+  async delete(@Param('id') projectId: string, @Req() req) {
+    const userId = req.user.id;
     const project = await this.prisma.project.findUnique({
-      where: { id: projectId },
+      where: { id: parseInt(projectId, 10) },
       include: { creator: true },
     });
 
     if (!project) {
-      throw new ConflictException('Project not found.');
+      throw new ConflictException('Projet non trouvé.');
     }
 
     if (project.creatorId !== userId) {
       throw new ForbiddenException(
-        'You are not allowed to delete this project.',
+        'Vous n\'êtes pas autorisé à supprimer ce projet.',
       );
     }
 
     try {
-      // Supprimer d'abord les tâches associées au projet
+      // Suppression de toutes les tâches associées au projet
       await this.prisma.task.deleteMany({
         where: {
-          projectId,
+          projectId: parseInt(projectId, 10),
         },
       });
 
-      // Ensuite, supprimer le projet lui-même
+      // Suppression du projet
       await this.prisma.project.delete({
-        where: { id: projectId },
+        where: { id: parseInt(projectId, 10) },
       });
+
+      return { message: 'Projet et tâches associées supprimés avec succès.' };
     } catch (error) {
-      throw new Error(`Failed to delete project: ${error.message}`);
+      throw new Error(`Échec de la suppression du projet : ${error.message}`);
     }
   }
 }
